@@ -1,13 +1,13 @@
 ---
 title: "RP Data Analysis Task"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 date: '2024-02-16'
 geometry: margin=1in
 ---
 
-Link to GitHub Repository containing code files: 
+Link to GitHub Repository containing code files: https://github.com/callievrose/boothworksample.git
 
 ***Task 1: Answer a research question***
 
