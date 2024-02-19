@@ -1,0 +1,333 @@
+---
+title: "RP Data Analysis Task"
+output:
+  html_document: default
+  pdf_document: default
+date: '2024-02-16'
+geometry: margin=1in
+---
+
+Link to GitHub Repository containing code files: 
+
+***Task 1: Answer a research question***
+
+**Analyses and Conclusions**
+
+Based on our analyses, we have determined that on average, (a) people do care about receiving a return apology if they are the first to apologize, (b) this preference does not necessarily vary as a function of individual differences in "initiator type," and (c) a return apology is not viewed as a form of forgiveness.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = 'hide')
+
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(tidyr)
+library(sentimentr)
+```
+
+```{r}
+
+#Loading the data
+data <- read_excel("Data - Fall 2023.xlsx", 2)
+
+#Getting rid of NA values and people who did not pass the attention check
+data <- data %>%
+    filter(!is.na(feelings_youalone)) %>%
+    filter(passedattn == "yes")
+
+#Analysis 1: paired t-test
+analysis1 <- t.test(data$feelings_youalone, data$feelings_bothyoufirst, paired = TRUE)
+analysis1
+```
+
+
+To answer our first question, we conducted a paired t-test, examining the difference between the feelings_youalone variable and the feelings_bothyoufirst variable within subjects. The purpose of this analysis was to test whether or not subjects would feel differently if they did or did not get a return apology after apologizing first. Our p-value (< 2.2e-16) was well below 0.05, indicating that there was a significant difference between how subjects felt in these two conditions. In fact, subjects felt on average 26.12 points better (on a scale from -30 to 30) when they received a return apology. This indicates that people do care whether or not they receive a return apology after being the first to apologize.
+
+```{r}
+#Analysis 2: ANOVA
+
+#Creating a new variable that holds the difference for each participant between feelings_bothyoufirst and feelings_youalone
+data <- data %>%
+    mutate(feelings_difference = feelings_bothyoufirst - feelings_youalone)
+
+#ANOVA analysis on feelings_difference, using initiator_type as groups
+analysis2 <- aov(feelings_difference ~ initiator_type, data = data)
+summary(analysis2)
+
+#Sanity check: are the means in each group very far apart?
+data_never <- data[data$initiator_type == "never", ]
+t.test(data_never$feelings_youalone, data_never$feelings_bothyoufirst, paired = TRUE)
+
+data_always <- data[data$initiator_type == "always", ]
+t.test(data_always$feelings_youalone, data_always$feelings_bothyoufirst, paired = TRUE)
+
+data_conditional <- data[data$initiator_type == "conditional", ]
+t.test(data_conditional$feelings_youalone, data_conditional$feelings_bothyoufirst, paired = TRUE)
+
+    #The means aren't that far apart and sample sizes are very small, so it makes sense that we don't find a significant difference
+
+```
+   
+For our second analysis, we ran a within-subjects ANOVA test to determine if caring about a return apology varies as a function of initiator type. Our p-value of 0.566 is greater than 0.05, indicating that the difference between groups is not significant based on our analyses. We calculated the means for each group and discovered that they are relatively close together, and given that the sample size for each group is quite small, the lack of significance in our analysis is unsurprising. However, it's important to note that those in the conditional initiator type had the largest average difference, which makes logical sense—those who care more about getting a return apology relative to not getting one would be more likely to change their actions based on whether they think they'll receive an apology. Although our results weren't significant, we could investigate this finding further by conducting another experiment with a larger sample size.
+
+```{r}
+#Analysis 3: paired t-test (forgiveness variable)
+analysis3 <- t.test(data$feelings_bothyoufirst, data$feelings_youaloneforgiven, paired = TRUE)
+analysis3
+
+
+```
+
+For our third analysis, we conducted a paired t-test on feelings_bothyoufirst and feelings_youaloneforgiven to determine whether subjects would feel differently after (a) receiving a return apology, and (b) being forgiven but not receiving a return apology. Our p-value (2.32e-10) was less than 0.05, indicating that the difference between these two variables was significant. On average, participants would rather receive a return apology than be forgiven but not receive a return apology by 21.28 points (on a scale from -30 to 30), indicating that a return apology is not viewed as a form of forgiveness.
+
+
+**Plots**
+
+```{r}
+
+#Renaming variables for plot labeling purposes
+plot_data <- data %>%
+    rename("No Return Apology" = "feelings_youalone",
+           "Return Apology" = "feelings_bothyoufirst",
+           "Forgiveness, No Apology" = "feelings_youaloneforgiven")
+
+#Plot 1: No return apology vs. return apology
+
+ggpaired(plot_data, "No Return Apology", "Return Apology",
+         color = "condition",
+         line.color = "grey80",
+         palette = c("#e76f51", "#2a9d8f"),
+         ylab = "Feelings\n(-30 = extremely negative,\n30 = extremely positive)",
+         xlab = "Conditions",
+         title = "Feelings on return apologies after being the first to apologize",
+         ggtheme = theme_classic()
+) +
+    labs(color = "Conditions") +
+    scale_y_continuous(breaks = seq(-30, 30, by = 10)) 
+
+```
+
+This plot shows that on average, people think they will feel significantly better if they receive a return apology than if they don't. Interestingly, all of the lines (which indicate data points from the same participant) are either horizontal or slanting upward, indicating that every single person thought receiving a return apology would be equally or more favorable than not receiving one.
+
+
+```{r}
+
+#Plot 2: Return apology vs. Forgiveness
+ggpaired(plot_data, "Return Apology", "Forgiveness, No Apology",
+         color = "condition",
+         line.color = "grey90",
+         palette = c("#2a9d8f", "#cda052"),
+         ylab = "Feelings\n(-30 = extremely negative,\n30 = extremely positive)",
+         xlab = "Conditions",
+         title = "Feelings on return apologies and forgiveness",
+         ggtheme = theme_classic(),
+         position = position_nudge(x = -0.2)
+) +
+    labs(color = "Conditions") +
+    scale_y_continuous(breaks = seq(-30, 30, by = 10))
+
+```
+
+
+Our second plot shows that on average, people much prefer to get a return apology than forgiveness from the other person. However, some individuals prefer forgiveness to an apology, indicating that this preference might be dependent on situational factors or individual values.
+
+
+**Possible Psychological Explanations**
+
+A desire for empathy is likely a driving factor behind these results. An apology is a way of demonstrating understanding of someone else's feelings and expressing regret for hurting those feelings. People like to feel cared for, so they may prefer to receive an apology because it demonstrates that the other person cares about and empathizes with them.
+
+Additionally, the concept of reciprocity may be a factor. When someone apologizes, they want the other person to reciprocate, and will be frustrated if they don't follow this social norm. This might explain why people generally prefer a return apology than just forgiveness, because although forgiveness demonstrates empathy, it does not demonstrate reciprocity.
+
+People also may want others to take responsibility for their actions, and will be frustrated when they don't demonstrate this through apologizing. Especially in situations where someone feels that the other person is to blame, they may be frustrated by a lack of accountability in addition to or instead of a lack of empathy/reciprocity.
+
+
+**Further observations**
+
+```{r}
+#Additional analysis: reciprocity
+t.test(data$feelings_themalone, data$feelings_neither, paired = TRUE)
+
+```
+To further examine some of these theories, we conducted two additional analyses. Our first analyses is a paired t-test examining the differences between the feelings_themalone variable and the feelings_neither variable. The purpose of this analysis is to explore whether reciprocity may be a driving factor behind our results. In our original analysis, we found that people thought they would be 26.12 points happier on average if they received a return apology after apologizing first. However, if the reason that they cared about this was reciprocity, then the difference would not be so large if we compared the conditions where the first participant did not apologize at all. Our t-test found that there was a significant difference between the conditions where only the other person apologized and the condition where neither person apologized, but the average difference is only 9.4 points, which is much smaller than the difference when the participant apologized first. This indicates that reciprocity may be a driving force behind caring about receiving a return apology.
+
+
+```{r fig.show='hide'}
+
+#Additional analysis: blame
+data <- data %>%
+    mutate(forgiveness_difference = feelings_bothyoufirst - feelings_youaloneforgiven)
+
+ggplot(data, aes(x = blame_1, y = feelings_difference)) +
+    geom_point()
+
+ggplot(data, aes(x = blame_1, y = forgiveness_difference)) +
+    geom_point()
+
+regression <- lm(feelings_difference ~ blame_1, data = data)
+summary(regression)
+
+regression <- lm(forgiveness_difference ~ blame_1, data = data)
+summary(regression)
+```
+
+Our next additional analysis examines whether blame might influence people's preference regarding return apologies and forgiveness. We hypothesized that if someone believed they themselves were more to blame for the conflict, they would care less about receiving a return apology, and they would value forgiveness more in comparison to receiving a return apology. To test this, we looked at the correlation between blame_1, which measures how much someone believes they are to blame for a conflict, and feelings_difference, which measures how much people care about return apologies. We also looked at the correlation between blame_1 and forgiveness_difference, which measures how much people care about return apologies in comparison to receiving forgiveness but no return apology. However, in both cases the R-squared value was extremely low (.06 and .02), which shows that the correlation between blame and each variable is very weak. We don't have enough evidence to support our hypothesis that blame influences people's preference regarding return apologies and forgiveness.
+
+
+**Factors that might change the magnitude of the results**
+
+Cultural differences or individual values regarding apologies might lead to smaller or larger effects. For example, if a certain culture or individual deeply values taking responsibility for one's wrongdoings and demonstrating empathy toward others, those people may place more weight on receiving a return apology than someone who doesn't value those things as much. Another factor that might change the magnitude of the results is the relationship between the two people. For instance, those with closer personal bonds might hold the other person to a higher standard when it comes to apologizing, or expect more empathy and thoughtfulness from them. These are only a few of the many factors that might affect the magnitude of the results.
+
+\vspace{2em}
+***Task 2: Additional Analyses***
+
+**Part 1: Bar Graph**
+
+```{r fig.width=6, fig.height=4}
+
+category <- c("Participant", "Participant, Other", "Other", "Other, Participant", "Neither", "Participant, Other forgave\nbut did not apologize")
+
+lower_bound <- c(t.test(data$feelings_youalone)$conf.int[1], t.test(data$feelings_bothyoufirst)$conf.int[1], t.test(data$feelings_themalone)$conf.int[1], t.test(data$feelings_boththemfirst)$conf.int[1], t.test(data$feelings_neither)$conf.int[1], t.test(data$feelings_youaloneforgiven)$conf.int[1])
+
+upper_bound <- c(t.test(data$feelings_youalone)$conf.int[2], t.test(data$feelings_bothyoufirst)$conf.int[2], t.test(data$feelings_themalone)$conf.int[2], t.test(data$feelings_boththemfirst)$conf.int[2], t.test(data$feelings_neither)$conf.int[2], t.test(data$feelings_youaloneforgiven)$conf.int[2])
+
+mean <- c(mean(data$feelings_youalone), mean(data$feelings_bothyoufirst), mean(data$feelings_themalone), mean(data$feelings_boththemfirst), mean(data$feelings_neither), mean(data$feelings_youaloneforgiven))
+
+bar_data <- data.frame(category, lower_bound, upper_bound, mean)
+
+
+#Creating pot (note that we've used the same color palette as the plots above)
+
+ggplot(bar_data, aes(x = reorder(category, -mean), y = mean)) +
+    geom_col(aes(fill = category), width = .7) +
+    geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), width = .5) + 
+    labs(title = "Comparison of feelings in different apology scenarios",
+         fill = "Order of apologies",
+         x = "Order of apologies",
+         y = "Feelings\n(-30 = extremely negative,\n30 = extremely positive)") +
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_fill_manual(values = c("Other, Participant" = "#264653", "Participant, Other" = "#2a9d8f", "Other" = "#e9c46a", "Participant, Other forgave\nbut did not apologize" = "#cda052", "Neither" = "#f4a261", "Participant" = "#e76f51"),
+                      breaks = c("Other, Participant", "Participant, Other", "Other", "Participant, Other forgave\nbut did not apologize", "Neither", "Participant"))
+
+```
+
+In the above plot, we can see that participants had positive feelings toward the conditions where both themselves and the other person apologized, and negative feelings toward every other condition. The three conditions where the other person apologized have the three highest scores, indicating that the other person apologizing is generally the most important factor to people.
+
+
+**Part 2: ANOVA**
+
+```{r}
+
+wide_data <- data[,c("feelings_youalone", "feelings_bothyoufirst", "feelings_themalone", "feelings_boththemfirst", "feelings_neither", "feelings_youaloneforgiven")]
+
+# Transform wide data to long format
+long_data <- gather(wide_data, key = "type", value = "value")
+
+summary(aov(value ~ type, data = long_data))
+
+#Conducting pairwise t-tests
+
+boththemfirst_test <- t.test(data$feelings_youalone, data$feelings_boththemfirst, paired = TRUE)
+boththemfirst_test
+
+bothyoufirst_test <- t.test(data$feelings_youalone, data$feelings_bothyoufirst, paired = TRUE)
+bothyoufirst_test
+
+themalone_test <- t.test(data$feelings_youalone, data$feelings_themalone, paired = TRUE)
+themalone_test
+
+youaloneforgiven_test <- t.test(data$feelings_youalone, data$feelings_youaloneforgiven, paired = TRUE)
+youaloneforgiven_test
+
+neither_test <- t.test(data$feelings_youalone, data$feelings_neither, paired = TRUE)
+neither_test
+
+```
+
+For our second additional analysis, we conducted a one way ANOVA to determine if there are differences in feelings across the six scenarios and then performed pairwise t-tests to compare “feelings_youalone” to the other five scenarios. The p-value form our one-way ANOVA (<2e-16) is less than 0.05, showing that the there are significant differences in feelings across the six scenarios. Our paired t-tests also all have p-values less than 0.05, showing that there is a significant difference in feeling if you apologize first and don't get a return apology compared with every other type of scenario. However, the difference is much greater in the three conditions where the other person apologizes (in order of our bar graph, the average differences were -36.1, -26.1, and -13.5 in comparison to only -4.9 and -4.1).
+
+
+**Part 3: Proportions**
+
+```{r fig.width=6, fig.height=4}
+
+table(data$outcome_binary1)
+
+#Creating data table for the visualization
+proportion_data <- data.frame(type = c("Participant apologizes,\nthen other apologizes", "Neither apologizes"), proportion = c(37/47, 10/47))
+
+proportion_data$type <- factor(proportion_data$type, levels = c("Participant apologizes,\nthen other apologizes", "Neither apologizes"))
+
+#Creating bar graph
+ggplot(proportion_data, aes(x = type, y = proportion, fill = type)) +
+    geom_bar(stat = "identity",
+             width = .6,
+             color = "white",
+             position = position_dodge(width = 1),
+             ) +
+    theme_light() +
+    labs(title = "Proportions of people who prefer that\nboth/neither party apologizes",
+         y = "Proportion",
+         x = "Condition",
+         fill = "Condition") +
+    scale_fill_manual(values = c("#2a9d8f","#f4a261"))
+    
+
+proportion_test <- prop.test(37, 47, p = .5)
+proportion_test
+
+```
+
+We conducted a proportion test to determine if the proportion difference across answers for the outcome_binary1 variable were significantly different from one another. Our test had a p-value of less than 0.05, so we can determine that there is a significant difference. Our 95% confidence interval for the proportion who prefer that both parties apologize is [0.64, 0.89], which does not contain .5, indicating that the proportions are not equal. As we can see from the plot, significantly more people prefer that both parties apologize than neither.
+
+(Note that we used a bar plot rather than a pie or donut chart for this visualization because it's more difficult for people to compare areas in circular form as opposed to bar form.)
+
+
+**Part 4: NLP Task**
+```{r fig.show='hide'}
+#Conducting sentiment analysis
+sentiment_data <- sentiment_by(data$describe)
+sentiment_data
+
+data <- data %>%
+    mutate(sentiment = sentiment_data$ave_sentiment)
+
+summary(data$sentiment)
+
+#Examining whether sentiment analysis correlates with other relevant variables
+
+#relationship with initiator type? looking at means for each group and an ANOVA. perhaps those who feel more negatively are less likely to initiate an apology
+data_never <- data %>%
+    filter(initiator_type == "never")
+mean(data_never$sentiment)
+
+data_always <- data %>%
+    filter(initiator_type == "always")
+mean(data_always$sentiment)
+
+data_conditional <- data %>%
+    filter(initiator_type == "conditional")
+mean(data_conditional$sentiment)
+
+analysis_sentiment <- aov(sentiment ~ initiator_type, data = data)
+summary(analysis_sentiment)
+
+#relationship with blame? perhaps people who feel more negatively would put more blame on the other person, or on themselves
+ggplot(data, aes(sentiment, blame_1)) +
+    geom_point()
+
+regression <- lm(blame_1 ~ sentiment, data = data)
+summary(regression)
+
+#relationship with feelings_neither? perhaps those who feel more negatively would be more okay with no apologies, because they wouldn't have to see the other person.
+
+regression <- lm(feelings_neither ~ sentiment, data = data)
+summary(regression)
+```
+
+We conducted a sentiment analysis of the describe variable using VADER, and found that the average sentiment level is slightly negative, which makes sense given that the participants were describing a conflict. We explored the relationship between sentiment and a few other variables, including initiator_type, blame_1, and feelings_neither (see code for the reasoning behind this), but didn't find strong correlations with any of these variables. It's possible that we need more text to conduct a more accurate sentiment analysis, because several of the responses in the describe column were quite short.
+
+Note: ChatGPT was used to help conduct these analyses.
+Source: OpenAI. (2023). Statistical Test Comparison. Retrieved February 18th, 2023, from https://www.openai.com/chatgpt
